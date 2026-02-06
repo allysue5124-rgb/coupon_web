@@ -5,50 +5,259 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>兌換券</title>
   <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans TC", sans-serif; margin: 24px; }
-    .top { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
-    input { padding:10px; width: 380px; max-width: 100%; }
-    button { padding:10px 14px; cursor:pointer; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-top: 18px; }
-    .card { border:1px solid #ddd; border-radius: 12px; padding: 14px; position:relative; }
-    .title { font-weight: 800; }
-    .remain { margin-top: 8px; }
-    .hoverBox {
-      display:none; position:absolute; left:12px; right:12px; top:52px;
-      border:1px solid #ccc; border-radius: 10px; padding: 10px; background:#fff;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-      z-index: 10;
+    :root{
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 10px 30px rgba(17,24,39,0.08);
+      --shadow2: 0 6px 18px rgba(17,24,39,0.10);
+      --accent: #334155;      /* 低飽和藍灰 */
+      --accent2:#64748b;      /* 次要藍灰 */
+      --danger:#b42318;
+      --ok:#0f766e;           /* 低飽和綠 */
     }
-    .card:hover .hoverBox { display:block; }
-    .small { color:#666; font-size: 12px; }
-    .danger { color: #b00020; font-weight: 800; }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background: radial-gradient(1200px 600px at 15% 0%, #eef2f6 0%, var(--bg) 45%, #f3f4f6 100%);
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans TC", Arial, sans-serif;
+      line-height:1.4;
+    }
+    .wrap{ max-width: 1100px; margin: 28px auto; padding: 0 16px; }
+    .header{
+      display:flex; align-items:flex-end; justify-content:space-between; gap:14px;
+      margin-bottom: 14px;
+    }
+    h1{ font-size: 22px; margin:0; letter-spacing: .2px; }
+    .sub{ color:var(--muted); font-size: 13px; margin-top:6px; }
 
-    .modalBg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); align-items:center; justify-content:center; }
-    .modal { background:#fff; padding:16px; border-radius:12px; width: min(460px, 92vw); }
-    .modalBtns { display:flex; gap:10px; justify-content:flex-end; margin-top: 12px; }
-    .toast { position:fixed; right:16px; bottom:16px; padding:12px 14px; background:#111; color:#fff; border-radius:10px; display:none; }
-    .pill { display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius: 999px; font-size: 12px; color:#444; }
+    .panel{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .row{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .row + .row{ margin-top:10px; }
+    .input{
+      flex: 1 1 360px;
+      display:flex; gap:10px; align-items:center;
+      padding: 10px 12px;
+      border:1px solid var(--border);
+      border-radius: 12px;
+      background: #fbfbfc;
+    }
+    .input input{
+      width:100%;
+      border:none;
+      outline:none;
+      background:transparent;
+      font-size:14px;
+      color:var(--text);
+    }
+    .btn{
+      border:1px solid var(--border);
+      background: #ffffff;
+      color: var(--accent);
+      padding: 10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 700;
+      font-size: 13px;
+      transition: transform .06s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .btn:hover{ box-shadow: var(--shadow2); background:#fbfbfc; }
+    .btn:active{ transform: translateY(1px); }
+    .btn.primary{
+      background: var(--accent);
+      border-color: var(--accent);
+      color:#fff;
+    }
+    .btn.primary:hover{ background: #2b3a4d; }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding: 8px 10px;
+      border:1px solid var(--border);
+      border-radius: 999px;
+      background:#fbfbfc;
+      color: var(--muted);
+      font-size: 12px;
+      white-space:nowrap;
+    }
+    .dot{
+      width:8px; height:8px; border-radius: 999px; background: #cbd5e1;
+    }
+    .dot.ok{ background: #5eead4; }
+    .dot.bad{ background: #fca5a5; }
+    .hint{ color:var(--muted); font-size: 12px; }
+
+    .grid{
+      margin-top: 16px;
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .card{
+      position:relative;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      transition: transform .15s ease, box-shadow .2s ease;
+      min-height: 128px;
+    }
+    .card:hover{ transform: translateY(-2px); box-shadow: var(--shadow2); }
+    .title{ font-weight: 800; letter-spacing: .2px; }
+    .meta{ margin-top: 8px; color: var(--muted); font-size: 13px; }
+    .remain{
+      margin-top: 10px;
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .badge{
+      display:inline-flex; align-items:center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border:1px solid var(--border);
+      background:#fbfbfc;
+      color: var(--accent2);
+      font-weight: 800;
+    }
+    .badge.zero{ color: #9ca3af; }
+
+    /* hover panel */
+    .hoverBox{
+      position:absolute;
+      left:12px; right:12px; bottom:12px;
+      border:1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(251,251,252,0.98);
+      box-shadow: var(--shadow2);
+      padding: 12px;
+      transform: translateY(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    .card:hover .hoverBox{
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .desc{ color: var(--text); font-size: 13px; }
+    .small{ color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .actions{ margin-top: 10px; display:flex; gap:10px; }
+    .redeemBtn{
+      border:1px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      padding: 9px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 800;
+      font-size: 13px;
+    }
+    .redeemBtn:hover{ background:#f3f4f6; }
+    .redeemBtn:disabled{
+      border-color: var(--border);
+      color: #9ca3af;
+      cursor:not-allowed;
+      background: #f9fafb;
+    }
+
+    .danger{ color: var(--danger); font-weight: 800; }
+    .ok{ color: var(--ok); font-weight: 800; }
+
+    /* modal */
+    .modalBg{
+      display:none;
+      position:fixed; inset:0;
+      background: rgba(15,23,42,0.35);
+      align-items:center; justify-content:center;
+      padding: 18px;
+      z-index: 50;
+    }
+    .modal{
+      width: min(520px, 96vw);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow2);
+      padding: 16px;
+    }
+    .modal h2{ margin: 0 0 8px 0; font-size: 16px; }
+    .modal p{ margin: 6px 0; color: var(--muted); font-size: 13px; }
+    .modalBtns{ display:flex; justify-content:flex-end; gap:10px; margin-top: 14px; }
+
+    /* toast */
+    .toast{
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 60;
+      background: rgba(17,24,39,0.92);
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 14px;
+      box-shadow: var(--shadow2);
+      display:none;
+      max-width: min(420px, calc(100vw - 32px));
+      font-size: 13px;
+    }
+    .footerNote{ margin-top: 14px; color: var(--muted); font-size: 12px; }
+    code.inline{ background:#eef2f7; padding:2px 6px; border-radius: 8px; border:1px solid #e6eaf0; }
   </style>
 </head>
-<body>
-  <h2>兌換券</h2>
 
-  <div class="top">
-    <input id="token" type="password" placeholder="貼上 GitHub Token（只需一次，會存在此瀏覽器）" />
-    <button id="saveToken">儲存 Token</button>
-    <button id="load">重新載入</button>
-    <span class="pill" id="status">狀態：尚未載入</span>
-    <div class="small">朋友貼 Token 後，按兌換會自動更新 repo 的 coupons.json 並通知你。</div>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <h1>兌換券</h1>
+        <div class="sub">滑鼠移到卡片上可查看說明並兌換。兌換後會更新次數並通知你。</div>
+      </div>
+      <div class="pill" id="statusPill"><span class="dot" id="statusDot"></span><span id="statusText">尚未載入</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <div class="input" title="Private repo 需要 Token 才能讀寫">
+          <input id="token" type="password" placeholder="貼上 GitHub Token（只需一次，會存在此瀏覽器）" />
+        </div>
+        <button class="btn primary" id="saveToken">儲存 Token</button>
+        <button class="btn" id="load">重新載入</button>
+      </div>
+      <div class="row">
+        <div class="hint">
+          建議：只給朋友用就私下傳 Token；這個 Token 只要有 <code class="inline">Contents: Read and write</code> 權限即可。
+        </div>
+      </div>
+    </div>
+
+    <div id="grid" class="grid"></div>
+
+    <div class="footerNote">
+      若你看到「讀取失敗 404」，通常是 <b>Private repo 沒有帶 Token</b>（本頁已支援：只要儲存 Token 再重新載入即可）。
+    </div>
   </div>
 
-  <div id="grid" class="grid"></div>
-
-  <div id="modalBg" class="modalBg">
+  <!-- modal -->
+  <div id="modalBg" class="modalBg" role="dialog" aria-modal="true" aria-label="確認兌換">
     <div class="modal">
-      <div id="modalText"></div>
+      <h2 id="modalTitle">確認兌換</h2>
+      <div id="modalBody"></div>
       <div class="modalBtns">
-        <button id="cancelBtn">取消</button>
-        <button id="okBtn">確定兌換</button>
+        <button class="btn" id="cancelBtn">取消</button>
+        <button class="btn primary" id="okBtn">確定兌換</button>
       </div>
     </div>
   </div>
@@ -56,105 +265,178 @@
   <div id="toast" class="toast"></div>
 
 <script>
-/** ====== 你要改的設定（必改） ====== */
-const OWNER = "YOUR_GITHUB_NAME";      // 例如 "nttucslab"
-const REPO  = "YOUR_REPO_NAME";        // 例如 "coupon-site"
-const BRANCH = "main";                 // 例如 "main"
-const PATH = "coupons.json";           // 檔案路徑（放根目錄就這樣寫）
+/** ====== 必改：你的 repo 設定 ====== */
+const OWNER  = "allysue5124-rgb";
+const REPO   = "cupon_web";
+const BRANCH = "main";
+const PATH   = "coupons.json";
 
-/** ====== 通知（可選，但你要通知就填） ====== */
-const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1469263538064199792/qlJoiqx0tnDDlLESdhAAUG_cbW_8dw2h81zSM_FqA-36q0nT_XCCBbdPVtERjwDc6GOt"; // 例如: https://discord.com/api/webhooks/xxx/yyy
-/** =================================== */
+/** ====== 通知：Discord Webhook（你已提供） ====== */
+const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1469263538064199792/qlJoiqx0tnDDlLESdhAAUG_cbW_8dw2h81zSM_FqA-36q0nT_XCCBbdPVtERjwDc6GOt";
 
+/** ====== DOM ====== */
 const grid = document.getElementById("grid");
 const tokenInput = document.getElementById("token");
-const modalBg = document.getElementById("modalBg");
-const modalText = document.getElementById("modalText");
 const toast = document.getElementById("toast");
-const statusEl = document.getElementById("status");
+const modalBg = document.getElementById("modalBg");
+const modalBody = document.getElementById("modalBody");
+const statusText = document.getElementById("statusText");
+const statusDot = document.getElementById("statusDot");
 
+/** ====== State ====== */
 let couponsData = null;
 let fileSha = null;
 let pendingCouponIndex = null;
 
-function setStatus(s) { statusEl.textContent = "狀態：" + s; }
-
-function showToast(msg) {
-  toast.textContent = msg;
-  toast.style.display = "block";
-  setTimeout(() => toast.style.display = "none", 2500);
+function setStatus(text, kind="idle"){
+  statusText.textContent = text;
+  statusDot.className = "dot";
+  if (kind === "ok") statusDot.classList.add("ok");
+  if (kind === "bad") statusDot.classList.add("bad");
 }
 
-function getToken() {
+function showToast(msg){
+  toast.textContent = msg;
+  toast.style.display = "block";
+  setTimeout(() => toast.style.display = "none", 2600);
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[m]));
+}
+
+function getToken(){
   return localStorage.getItem("gh_token") || "";
 }
 
 document.getElementById("saveToken").onclick = () => {
   const t = tokenInput.value.trim();
-  if (!t) return showToast("請貼上 Token");
+  if (!t) return showToast("請貼上 GitHub Token");
   localStorage.setItem("gh_token", t);
   tokenInput.value = "";
-  showToast("Token 已儲存（只在這台電腦的瀏覽器）");
+  showToast("Token 已儲存（只在這台瀏覽器）");
 };
 
 document.getElementById("load").onclick = () => loadCoupons();
 
-async function loadCoupons() {
+async function githubFetch(url, {method="GET", token="", body=null} = {}){
+  const headers = { "Accept": "application/vnd.github+json" };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (body) headers["Content-Type"] = "application/json";
+
+  const res = await fetch(url, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : null
+  });
+
+  return res;
+}
+
+/** ✅ 修正點：Private repo 讀取也要帶 token */
+async function loadCoupons(){
   setStatus("載入中…");
   grid.innerHTML = "載入中…";
-  const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}?ref=${BRANCH}`;
-  const res = await fetch(url, { headers: { "Accept": "application/vnd.github+json" } });
 
-  if (!res.ok) {
-    setStatus("讀取失敗");
-    grid.innerHTML = `<div class="danger">讀取 coupons.json 失敗：${res.status}<br/>請檢查 OWNER/REPO/BRANCH/PATH 是否正確。</div>`;
+  const token = getToken();
+  if (!token){
+    // Private repo 下沒 token 幾乎一定 404，所以先提示更清楚
+    setStatus("需要 Token", "bad");
+    grid.innerHTML = `
+      <div class="panel">
+        <div class="danger">尚未提供 GitHub Token</div>
+        <div class="hint" style="margin-top:8px;">
+          你的 repo 很可能是 Private，讀取 <code class="inline">coupons.json</code> 需要 Token。<br/>
+          請在上方貼上 Token → 儲存 → 再按「重新載入」。
+        </div>
+      </div>`;
+    return;
+  }
+
+  const url = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}?ref=${BRANCH}`;
+  const res = await githubFetch(url, { token });
+
+  if (!res.ok){
+    const txt = await res.text().catch(() => "");
+    setStatus(`讀取失敗 ${res.status}`, "bad");
+    grid.innerHTML = `
+      <div class="panel">
+        <div class="danger">讀取 coupons.json 失敗：${res.status}</div>
+        <div class="hint" style="margin-top:8px;">
+          可能原因：Token 權限不足（需要 Contents: Read and write）、repo/branch/path 打錯、或 Token 沒選到這個 repo。<br/>
+          <span class="small">（除錯訊息：${escapeHtml(txt.slice(0, 240))}）</span>
+        </div>
+      </div>`;
     return;
   }
 
   const j = await res.json();
   fileSha = j.sha;
+
   const decoded = atob((j.content || "").replace(/\n/g, ""));
   couponsData = JSON.parse(decoded);
 
-  setStatus("已載入");
+  setStatus("已載入", "ok");
   renderCoupons();
 }
 
-function renderCoupons() {
+function renderCoupons(){
   const list = couponsData?.coupons || [];
-  grid.innerHTML = "";
+  if (!Array.isArray(list) || list.length === 0){
+    grid.innerHTML = `
+      <div class="panel">
+        <div class="danger">coupons.json 內容不正確或是空的</div>
+        <div class="hint" style="margin-top:8px;">請確認格式：{ "coupons": [ ... ] }</div>
+      </div>`;
+    return;
+  }
 
+  grid.innerHTML = "";
   list.forEach((c, idx) => {
     const card = document.createElement("div");
     card.className = "card";
 
-    const disabled = c.remain <= 0;
+    const remain = Number(c.remain ?? 0);
+    const disabled = remain <= 0;
+
     card.innerHTML = `
-      <div class="title">${escapeHtml(c.title)}</div>
-      <div class="remain">剩餘：<b>${c.remain}</b></div>
+      <div class="title">${escapeHtml(c.title ?? `兌換券 ${idx+1}`)}</div>
+      <div class="meta">${escapeHtml(c.id ?? `C${idx+1}`)}</div>
+      <div class="remain">
+        <span>剩餘兌換次數</span>
+        <span class="badge ${disabled ? "zero" : ""}">${remain}</span>
+      </div>
+
       <div class="hoverBox">
-        <div>${escapeHtml(c.desc || "")}</div>
-        <div class="small" style="margin-top:8px;">代號：${escapeHtml(c.id)}</div>
-        <div style="margin-top:10px;">
-          <button ${disabled ? "disabled" : ""} data-idx="${idx}">${disabled ? "已用完" : "兌換"}</button>
+        <div class="desc">${escapeHtml(c.desc ?? "")}</div>
+        <div class="small">代號：${escapeHtml(c.id ?? `C${idx+1}`)}</div>
+        <div class="actions">
+          <button class="redeemBtn" ${disabled ? "disabled" : ""} data-idx="${idx}">
+            ${disabled ? "已用完" : "兌換"}
+          </button>
         </div>
       </div>
     `;
 
-    const btn = card.querySelector("button");
-    if (btn && !disabled) btn.addEventListener("click", () => openConfirm(idx));
+    const btn = card.querySelector(".redeemBtn");
+    if (btn && !disabled){
+      btn.addEventListener("click", () => openConfirm(idx));
+    }
     grid.appendChild(card);
   });
 }
 
-function openConfirm(idx) {
+function openConfirm(idx){
   const c = couponsData.coupons[idx];
   pendingCouponIndex = idx;
 
-  modalText.innerHTML = `
-    <div><b>${escapeHtml(c.title)}</b></div>
-    <div style="margin-top:8px;">確定要兌換 <b>1 次</b> 嗎？</div>
-    <div class="small" style="margin-top:6px;">目前剩餘：${c.remain}</div>
+  modalBody.innerHTML = `
+    <p><b>${escapeHtml(c.title)}</b></p>
+    <p>確定要兌換 <b>1 次</b> 嗎？</p>
+    <p>目前剩餘：<b>${escapeHtml(String(c.remain))}</b></p>
+    <p class="hint">確定後會扣除次數、更新到 GitHub，並透過 Discord 通知你。</p>
   `;
   modalBg.style.display = "flex";
 }
@@ -171,35 +453,35 @@ document.getElementById("okBtn").onclick = async () => {
   if (idx === null) return;
 
   const token = getToken();
-  if (!token) {
+  if (!token){
     showToast("請先貼上並儲存 GitHub Token");
     return;
   }
 
   const c = couponsData.coupons[idx];
-  if (c.remain <= 0) {
+  if ((c.remain ?? 0) <= 0){
     showToast("已經沒次數了");
     return;
   }
 
-  // 先在畫面上立即扣（體驗好）
-  c.remain -= 1;
+  // 先本地扣一次（體驗好）
+  c.remain = Number(c.remain) - 1;
   couponsData.updated_at = new Date().toISOString();
   renderCoupons();
 
-  try {
+  try{
     await saveToGitHub(token, c);
-    showToast("兌換成功，已更新紀錄");
-  } catch (e) {
-    // 失敗就回滾（把次數加回去）
-    c.remain += 1;
+    showToast("兌換成功，已更新並通知");
+  }catch(e){
+    // 失敗回滾
+    c.remain = Number(c.remain) + 1;
     renderCoupons();
-    showToast("更新失敗：Token/權限/設定可能不正確");
+    showToast("更新失敗：請檢查 Token 權限/是否選到 repo");
     console.error(e);
   }
 };
 
-async function saveToGitHub(token, couponJustUsed) {
+async function saveToGitHub(token, couponJustUsed){
   const api = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}`;
 
   const contentStr = JSON.stringify(couponsData, null, 2);
@@ -210,31 +492,25 @@ async function saveToGitHub(token, couponJustUsed) {
     branch: BRANCH
   };
 
-  const res = await fetch(api, {
-    method: "PUT",
-    headers: {
-      "Accept": "application/vnd.github+json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify(body)
-  });
+  const res = await githubFetch(api, { method: "PUT", token, body });
 
-  if (!res.ok) {
-    const txt = await res.text();
+  if (!res.ok){
+    const txt = await res.text().catch(() => "");
     throw new Error(`GitHub PUT failed: ${res.status} ${txt}`);
   }
 
   const out = await res.json();
   fileSha = out.content.sha;
 
-  if (DISCORD_WEBHOOK_URL) {
+  // 通知你（Discord webhook）
+  if (DISCORD_WEBHOOK_URL){
     await notifyDiscord(couponJustUsed);
   }
 }
 
-async function notifyDiscord(c) {
-  // 通知失敗不影響兌換
-  try {
+async function notifyDiscord(c){
+  // 通知失敗不影響兌換結果
+  try{
     await fetch(DISCORD_WEBHOOK_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -242,16 +518,11 @@ async function notifyDiscord(c) {
         content: `兌換通知：${c.title}（${c.id}）被兌換 1 次，剩餘 ${c.remain}。`
       })
     });
-  } catch {}
+  }catch{}
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  }[m]));
-}
-
-// init
+/** init */
+setStatus("尚未載入");
 loadCoupons();
 </script>
 </body>
