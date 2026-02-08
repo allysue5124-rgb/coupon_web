@@ -26,7 +26,7 @@
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans TC", Arial, sans-serif;
       line-height:1.45;
     }
-    .wrap{ max-width: 1100px; min-height: 93dvh;; margin: 28px auto; padding: 0 16px; }
+    .wrap{ max-width: 1100px; min-height: 93dvh; margin: 28px auto; padding: 0 16px; }
     .header{
       display:flex; align-items:flex-end; justify-content:space-between; gap:14px;
       margin-bottom: 14px;
@@ -155,11 +155,33 @@
       pointer-events: none;
       transition: opacity .15s ease, transform .15s ease;
     }
-    .card:hover .hoverBox{
-      opacity: 1;
-      transform: translateY(0);
-      pointer-events: auto;
+
+    /* ===== 桌機：真的 hover 才顯示 ===== */
+    @media (hover: hover) and (pointer: fine) {
+      .card:hover .hoverBox{
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
     }
+
+    /* ===== 手機/觸控：用 .is-open 當作 hover 狀態 ===== */
+    @media (hover: none) and (pointer: coarse) {
+      .card { cursor: pointer; }
+      .card .hoverBox{
+        opacity: 0;
+        transform: translateY(10px);
+        pointer-events: none;
+      }
+      .card.is-open .hoverBox{
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+      /* 手機上 hoverBox 內部比較好點 */
+      .redeemBtn{ padding: 10px 14px; }
+    }
+
     .desc{ color: var(--text); font-size: 13px; }
     .small{ color: var(--muted); font-size: 12px; margin-top: 6px; }
     .actions{ margin-top: 10px; display:flex; gap:10px; }
@@ -238,14 +260,10 @@
         <button class="btn primary" id="saveToken">儲存 Token</button>
         <button class="btn" id="load">重新載入</button>
       </div>
-      <div class="row">
-        
-      </div>
+      <div class="row"></div>
     </div>
 
     <div id="grid" class="grid"></div>
-
-  
   </div>
 
   <!-- modal -->
@@ -269,7 +287,10 @@ const REPO   = "cupon_web";
 const BRANCH = "main";
 const PATH   = "coupons.json";
 
-/** ====== Discord Webhook（你已提供） ====== */
+/**
+ * ⚠️ 小提醒：Webhook 放在前端會被任何人看到並濫用（狂洗訊息）。
+ * 正式用建議改成：前端打你自己的後端，再由後端去呼叫 Discord Webhook。
+ */
 const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1469263538064199792/qlJoiqx0tnDDlLESdhAAUG_cbW_8dw2h81zSM_FqA-36q0nT_XCCBbdPVtERjwDc6GOt";
 
 /** ====== DOM ====== */
@@ -285,6 +306,9 @@ const statusDot = document.getElementById("statusDot");
 let couponsData = null;
 let fileSha = null;
 let pendingCouponIndex = null;
+
+/** ====== Touch 判斷（手機才用 click 展開） ====== */
+const IS_TOUCH = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 
 function setStatus(text, kind="idle"){
   statusText.textContent = text;
@@ -393,6 +417,12 @@ async function loadCoupons(){
   renderCoupons();
 }
 
+function closeAllCardsExcept(exceptEl){
+  document.querySelectorAll(".card.is-open").forEach(el => {
+    if (el !== exceptEl) el.classList.remove("is-open");
+  });
+}
+
 function renderCoupons(){
   // 支援兩種格式：{coupons:[...]} 或直接 [...]
   const list = Array.isArray(couponsData) ? couponsData : (couponsData?.coupons || []);
@@ -414,6 +444,7 @@ function renderCoupons(){
   }
 
   grid.innerHTML = "";
+
   couponsData.coupons.forEach((c, idx) => {
     const card = document.createElement("div");
     card.className = "card";
@@ -440,12 +471,38 @@ function renderCoupons(){
     `;
 
     const btn = card.querySelector(".redeemBtn");
+
+    // 兌換按鈕：照舊開確認視窗
     if (btn && !disabled){
-      btn.addEventListener("click", () => openConfirm(idx));
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation(); // 避免同時觸發卡片展開/收合
+        openConfirm(idx);
+      });
     }
+
+    // ✅ 手機：點一下卡片 = 展開/收合（觸控版 hover）
+    if (IS_TOUCH){
+      card.addEventListener("click", (e) => {
+        // 點到按鈕就別展開干擾
+        if (e.target.closest(".redeemBtn")) return;
+
+        const isOpen = card.classList.contains("is-open");
+        closeAllCardsExcept(card);
+        card.classList.toggle("is-open", !isOpen);
+      });
+    }
+
     grid.appendChild(card);
   });
 }
+
+// ✅ 手機：點空白處收起所有卡片
+document.addEventListener("click", (e) => {
+  if (!IS_TOUCH) return;
+  if (!e.target.closest(".card")) {
+    document.querySelectorAll(".card.is-open").forEach(el => el.classList.remove("is-open"));
+  }
+});
 
 function openConfirm(idx){
   const c = couponsData.coupons[idx];
